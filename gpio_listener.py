@@ -7,25 +7,25 @@ import requests
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-# Usamos localhost ya que el servidor corre en la misma máquina
 SERVER_URL = "http://localhost:3000/push-to-talk"
 
 def button_callback(channel):
     state = GPIO.input(channel)
+    current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     if state == 1:
-        print("Button pressed: push-to-talk START")
+        print(f"{current_time} - Button pressed: push-to-talk START")
         try:
             r = requests.get(SERVER_URL, params={"state": "1"})
-            print("Response:", r.text)
+            print(f"{current_time} - Response: {r.text}")
         except Exception as e:
-            print("Error sending request:", e)
+            print(f"{current_time} - Error sending request: {e}")
     else:
-        print("Button released: push-to-talk STOP")
+        print(f"{current_time} - Button released: push-to-talk STOP")
         try:
             r = requests.get(SERVER_URL, params={"state": "0"})
-            print("Response:", r.text)
+            print(f"{current_time} - Response: {r.text}")
         except Exception as e:
-            print("Error sending request:", e)
+            print(f"{current_time} - Error sending request: {e}")
 
 GPIO.add_event_detect(16, GPIO.BOTH, callback=button_callback, bouncetime=200)
 
