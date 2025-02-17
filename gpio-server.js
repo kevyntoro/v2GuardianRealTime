@@ -1,39 +1,44 @@
 // gpio-server.js
-import { Gpio } from "onoff";
-import { WebSocketServer, WebSocket } from "ws";
+import { Gpio } from 'pigpio';
+import { WebSocketServer, WebSocket } from 'ws';
 
-// Usar GPIO 17 (BCM 17) para probar; asegúrate de conectar el botón al pin correcto.
-const button = new Gpio(17, "in", "both");
+// Configura el pin GPIO (número BCM) que usarás, por ejemplo, GPIO17
+const button = new Gpio(16, {
+  mode: Gpio.INPUT,
+  pullUpDown: Gpio.PUD_DOWN, // Asume que el botón se conecta a 3.3V y a tierra
+  edge: Gpio.EITHER_EDGE,
+});
 
+// Crea el servidor WebSocket
 const PORT = 8080;
 const wss = new WebSocketServer({ port: PORT }, () => {
   console.log(`Servidor WebSocket GPIO corriendo en el puerto ${PORT}`);
 });
 
-wss.on("connection", (ws) => {
-  console.log("Nuevo cliente conectado al WebSocket GPIO");
+wss.on('connection', (ws) => {
+  console.log('Nuevo cliente conectado al WebSocket GPIO');
 });
 
-button.watch((err, value) => {
-  if (err) {
-    console.error("Error leyendo GPIO:", err);
-    return;
-  }
-  console.log(`Estado del botón (GPIO 17): ${value}`);
-  const event = value === 1 ? "pushToTalkStart" : "pushToTalkStop";
-  console.log(`GPIO: ${event} (valor: ${value})`);
+// Establece un filtro de rebote (opcional, en microsegundos)
+button.glitchFilter(10000); // 10 ms
 
+// Registra el evento "alert" que se dispara en cada cambio de estado
+button.on('alert', (level, tick) => {
+  console.log(`Alerta del botón: nivel ${level} en tick ${tick}`);
+  const event = level === 1 ? 'pushToTalkStart' : 'pushToTalkStop';
+  console.log(`Evento: ${event}`);
+
+  // Envía el evento a todos los clientes conectados
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       const message = JSON.stringify({ event });
       client.send(message);
-      console.log("Mensaje enviado al cliente:", message);
+      console.log('Mensaje enviado al cliente:', message);
     }
   });
 });
 
-process.on("SIGINT", () => {
-  button.unexport();
+process.on('SIGINT', () => {
+  button.digitalWrite(0);
   process.exit();
 });
-
