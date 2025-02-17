@@ -2,9 +2,8 @@
 import { Gpio } from "onoff";
 import { WebSocketServer, WebSocket } from "ws";
 
-// Usa el número BCM correspondiente al pin físico que estás usando.
-// Si el botón está en el pin físico 16, es probable que debas usar 23.
-const button = new Gpio(23, "in", "both");
+// Usar GPIO 17 (BCM 17) para probar; asegúrate de conectar el botón al pin correcto.
+const button = new Gpio(17, "in", "both");
 
 const PORT = 8080;
 const wss = new WebSocketServer({ port: PORT }, () => {
@@ -20,7 +19,7 @@ button.watch((err, value) => {
     console.error("Error leyendo GPIO:", err);
     return;
   }
-  console.log(`Estado del botón (GPIO 23): ${value}`);
+  console.log(`Estado del botón (GPIO 17): ${value}`);
   const event = value === 1 ? "pushToTalkStart" : "pushToTalkStop";
   console.log(`GPIO: ${event} (valor: ${value})`);
 
@@ -37,3 +36,4 @@ process.on("SIGINT", () => {
   button.unexport();
   process.exit();
 });
+
