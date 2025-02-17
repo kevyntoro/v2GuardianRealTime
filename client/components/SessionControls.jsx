@@ -1,4 +1,3 @@
-// SessionControls.jsx
 import React, { useState } from "react";
 import { CloudLightning, CloudOff, MessageSquare } from "react-feather";
 import Button from "./Button";
@@ -50,7 +49,7 @@ function SessionActive({
         onChange={(e) => setMessage(e.target.value)}
       />
       <Button
-        // Si el input está vacío, el botón actuará como push-to-talk
+        // Si el input está vacío, se activa la funcionalidad push-to-talk
         onMouseDown={() => {
           if (!message.trim()) {
             pushToTalkStart();

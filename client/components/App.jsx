@@ -1,4 +1,3 @@
-// App.jsx
 import React, { useEffect, useRef, useState } from "react";
 import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
@@ -26,15 +25,17 @@ export default function App() {
     audioElement.current = document.createElement("audio");
     audioElement.current.autoplay = true;
     pc.ontrack = (e) => {
+      console.log("Recibiendo pista remota:", e.streams[0]);
       audioElement.current.srcObject = e.streams[0];
     };
 
     // Capturar audio local (micrófono) y añadirlo, pero desactivarlo inicialmente
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     const track = ms.getTracks()[0];
-    track.enabled = false; // No se transmite hasta activar push-to-talk
+    track.enabled = false; // Se mantiene desactivada la transmisión
     localAudioTrack.current = track;
     pc.addTrack(track);
+    console.log("Audio local capturado y añadido a la conexión, pero deshabilitado");
 
     // Configurar canal de datos para eventos
     const dc = pc.createDataChannel("oai-events");
@@ -62,6 +63,7 @@ export default function App() {
     await pc.setRemoteDescription(answer);
 
     peerConnection.current = pc;
+    console.log("Sesión iniciada");
   }
 
   function stopSession() {
@@ -75,6 +77,7 @@ export default function App() {
     setIsSessionActive(false);
     setDataChannel(null);
     peerConnection.current = null;
+    console.log("Sesión detenida");
   }
 
   function sendClientEvent(message) {
@@ -100,36 +103,43 @@ export default function App() {
     sendClientEvent({ type: "response.create" });
   }
 
-  // Funciones para push-to-talk: activan o desactivan la transmisión del audio
+  // Funciones para push-to-talk: habilitan o deshabilitan la transmisión del audio
   function pushToTalkStart() {
     if (localAudioTrack.current) {
-      console.log("pushToTalkStart: habilitando audio");
+      console.log("pushToTalkStart: Habilitando audio");
       localAudioTrack.current.enabled = true;
+    } else {
+      console.log("pushToTalkStart: localAudioTrack es null");
     }
   }
   function pushToTalkStop() {
     if (localAudioTrack.current) {
-      console.log("pushToTalkStop: deshabilitando audio");
+      console.log("pushToTalkStop: Deshabilitando audio");
       localAudioTrack.current.enabled = false;
+    } else {
+      console.log("pushToTalkStop: localAudioTrack es null");
     }
   }
 
-  // Configurar eventos del data channel
+  // Configurar eventos del canal de datos
   useEffect(() => {
     if (dataChannel) {
       dataChannel.addEventListener("message", (e) => {
-        setEvents((prev) => [JSON.parse(e.data), ...prev]);
+        const msg = JSON.parse(e.data);
+        console.log("Mensaje recibido del canal de datos:", msg);
+        setEvents((prev) => [msg, ...prev]);
       });
       dataChannel.addEventListener("open", () => {
         setIsSessionActive(true);
         setEvents([]);
+        console.log("Canal de datos abierto, sesión activa");
       });
     }
   }, [dataChannel]);
 
   // Conexión al servidor WebSocket para recibir eventos del GPIO
   useEffect(() => {
-    // Ajusta la URL según corresponda (por ejemplo, ws://<ip-de-tu-raspberry>:8080)
+    // Cambia la URL según la IP o dominio de tu Raspberry Pi si no es localhost
     const ws = new WebSocket("ws://localhost:8080");
     ws.onopen = () => {
       console.log("Conectado al servidor WebSocket GPIO");
@@ -142,6 +152,8 @@ export default function App() {
           pushToTalkStart();
         } else if (data.event === "pushToTalkStop") {
           pushToTalkStop();
+        } else {
+          console.log("Evento desconocido recibido:", data.event);
         }
       } catch (e) {
         console.error("Error al parsear el mensaje GPIO:", e);
