@@ -2,7 +2,9 @@
 import { Gpio } from "onoff";
 import { WebSocketServer, WebSocket } from "ws";
 
-const button = new Gpio(16, "in", "both"); // Configura GPIO 16 para detectar ambos flancos
+// Usa el número BCM correspondiente al pin físico que estás usando.
+// Si el botón está en el pin físico 16, es probable que debas usar 23.
+const button = new Gpio(23, "in", "both");
 
 const PORT = 8080;
 const wss = new WebSocketServer({ port: PORT }, () => {
@@ -18,12 +20,10 @@ button.watch((err, value) => {
     console.error("Error leyendo GPIO:", err);
     return;
   }
-  // Log para ver cada cambio de estado
-  console.log(`Estado del botón (GPIO 16): ${value}`);
+  console.log(`Estado del botón (GPIO 23): ${value}`);
   const event = value === 1 ? "pushToTalkStart" : "pushToTalkStop";
   console.log(`GPIO: ${event} (valor: ${value})`);
 
-  // Envía el evento a todos los clientes conectados
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       const message = JSON.stringify({ event });
