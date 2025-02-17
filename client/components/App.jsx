@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
@@ -10,38 +10,34 @@ export default function App() {
   const [dataChannel, setDataChannel] = useState(null);
   const peerConnection = useRef(null);
   const audioElement = useRef(null);
-  const localAudioTrack = useRef(null); // Referencia a la pista de audio local
+  const localAudioTrack = useRef(null); // Para manejar la pista local (push-to-talk)
 
   async function startSession() {
-    // Obtener token efímero
+    // Get an ephemeral key from the Fastify server
     const tokenResponse = await fetch("/token");
     const data = await tokenResponse.json();
     const EPHEMERAL_KEY = data.client_secret.value;
 
-    // Crear la conexión WebRTC
+    // Create a peer connection
     const pc = new RTCPeerConnection();
 
-    // Configurar reproducción de audio remoto
+    // Set up to play remote audio from the model
     audioElement.current = document.createElement("audio");
     audioElement.current.autoplay = true;
-    pc.ontrack = (e) => {
-      console.log("Recibiendo pista remota:", e.streams[0]);
-      audioElement.current.srcObject = e.streams[0];
-    };
+    pc.ontrack = (e) => (audioElement.current.srcObject = e.streams[0]);
 
-    // Capturar audio local (micrófono) y añadirlo, pero desactivarlo inicialmente
+    // Add local audio track for microphone input in the browser
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     const track = ms.getTracks()[0];
-    track.enabled = false; // Se mantiene desactivada la transmisión
+    track.enabled = false; // No se transmite hasta activar push-to-talk
     localAudioTrack.current = track;
     pc.addTrack(track);
-    console.log("Audio local capturado y añadido a la conexión, pero deshabilitado");
 
-    // Configurar canal de datos para eventos
+    // Set up data channel for sending and receiving events
     const dc = pc.createDataChannel("oai-events");
     setDataChannel(dc);
 
-    // Negociación SDP
+    // Start the session using the Session Description Protocol (SDP)
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
@@ -63,23 +59,27 @@ export default function App() {
     await pc.setRemoteDescription(answer);
 
     peerConnection.current = pc;
-    console.log("Sesión iniciada");
   }
 
+  // Stop current session, clean up peer connection and data channel
   function stopSession() {
-    if (dataChannel) dataChannel.close();
+    if (dataChannel) {
+      dataChannel.close();
+    }
     if (peerConnection.current) {
       peerConnection.current.getSenders().forEach((sender) => {
-        if (sender.track) sender.track.stop();
+        if (sender.track) {
+          sender.track.stop();
+        }
       });
       peerConnection.current.close();
     }
     setIsSessionActive(false);
     setDataChannel(null);
     peerConnection.current = null;
-    console.log("Sesión detenida");
   }
 
+  // Send a message to the model
   function sendClientEvent(message) {
     if (dataChannel) {
       message.event_id = message.event_id || crypto.randomUUID();
@@ -90,6 +90,7 @@ export default function App() {
     }
   }
 
+  // Send a text message to the model
   function sendTextMessage(message) {
     const event = {
       type: "conversation.item.create",
@@ -99,76 +100,38 @@ export default function App() {
         content: [{ type: "input_text", text: message }],
       },
     };
+
     sendClientEvent(event);
     sendClientEvent({ type: "response.create" });
   }
 
-  // Funciones para push-to-talk: habilitan o deshabilitan la transmisión del audio
+  // Funciones de push-to-talk: activan o desactivan la transmisión del audio
   function pushToTalkStart() {
     if (localAudioTrack.current) {
-      console.log("pushToTalkStart: Habilitando audio");
       localAudioTrack.current.enabled = true;
+      console.log("Push-to-talk activated");
     } else {
-      console.log("pushToTalkStart: localAudioTrack es null");
+      console.log("Local audio track not available");
     }
   }
   function pushToTalkStop() {
     if (localAudioTrack.current) {
-      console.log("pushToTalkStop: Deshabilitando audio");
       localAudioTrack.current.enabled = false;
-    } else {
-      console.log("pushToTalkStop: localAudioTrack es null");
+      console.log("Push-to-talk deactivated");
     }
   }
 
-  // Configurar eventos del canal de datos
   useEffect(() => {
     if (dataChannel) {
       dataChannel.addEventListener("message", (e) => {
-        const msg = JSON.parse(e.data);
-        console.log("Mensaje recibido del canal de datos:", msg);
-        setEvents((prev) => [msg, ...prev]);
+        setEvents((prev) => [JSON.parse(e.data), ...prev]);
       });
       dataChannel.addEventListener("open", () => {
         setIsSessionActive(true);
         setEvents([]);
-        console.log("Canal de datos abierto, sesión activa");
       });
     }
   }, [dataChannel]);
-
-  // Conexión al servidor WebSocket para recibir eventos del GPIO
-  useEffect(() => {
-    // Cambia la URL según la IP o dominio de tu Raspberry Pi si no es localhost
-    const ws = new WebSocket("ws://localhost:8080");
-    ws.onopen = () => {
-      console.log("Conectado al servidor WebSocket GPIO");
-    };
-    ws.onmessage = (message) => {
-      console.log("Mensaje recibido del servidor GPIO:", message.data);
-      try {
-        const data = JSON.parse(message.data);
-        if (data.event === "pushToTalkStart") {
-          pushToTalkStart();
-        } else if (data.event === "pushToTalkStop") {
-          pushToTalkStop();
-        } else {
-          console.log("Evento desconocido recibido:", data.event);
-        }
-      } catch (e) {
-        console.error("Error al parsear el mensaje GPIO:", e);
-      }
-    };
-    ws.onerror = (error) => {
-      console.error("Error en WebSocket GPIO:", error);
-    };
-    ws.onclose = () => {
-      console.log("Conexión WebSocket GPIO cerrada");
-    };
-    return () => {
-      ws.close();
-    };
-  }, []);
 
   return (
     <>

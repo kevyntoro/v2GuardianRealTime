@@ -1,14 +1,16 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { CloudLightning, CloudOff, MessageSquare } from "react-feather";
 import Button from "./Button";
 
 function SessionStopped({ startSession }) {
   const [isActivating, setIsActivating] = useState(false);
+
   function handleStartSession() {
     if (isActivating) return;
     setIsActivating(true);
     startSession();
   }
+
   return (
     <div className="flex items-center justify-center w-full h-full">
       <Button
@@ -22,18 +24,14 @@ function SessionStopped({ startSession }) {
   );
 }
 
-function SessionActive({
-  stopSession,
-  sendTextMessage,
-  pushToTalkStart,
-  pushToTalkStop,
-  sendClientEvent,
-}) {
+function SessionActive({ stopSession, sendTextMessage, pushToTalkStart, pushToTalkStop }) {
   const [message, setMessage] = useState("");
+
   function handleSendText() {
     sendTextMessage(message);
     setMessage("");
   }
+
   return (
     <div className="flex items-center justify-center w-full h-full gap-4">
       <input
@@ -49,7 +47,6 @@ function SessionActive({
         onChange={(e) => setMessage(e.target.value)}
       />
       <Button
-        // Si el input está vacío, se activa la funcionalidad push-to-talk
         onMouseDown={() => {
           if (!message.trim()) {
             pushToTalkStart();
@@ -70,7 +67,6 @@ function SessionActive({
             pushToTalkStop();
           }
         }}
-        // Si hay texto, se envía el mensaje
         onClick={() => {
           if (message.trim()) {
             handleSendText();
@@ -93,7 +89,7 @@ export default function SessionControls({
   stopSession,
   sendClientEvent,
   sendTextMessage,
-  events,
+  serverEvents,
   isSessionActive,
   pushToTalkStart,
   pushToTalkStop,
@@ -103,7 +99,6 @@ export default function SessionControls({
       {isSessionActive ? (
         <SessionActive
           stopSession={stopSession}
-          sendClientEvent={sendClientEvent}
           sendTextMessage={sendTextMessage}
           pushToTalkStart={pushToTalkStart}
           pushToTalkStop={pushToTalkStop}

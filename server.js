@@ -29,7 +29,7 @@ app.get("/token", async (req, res) => {
           model: "gpt-4o-realtime-preview-2024-12-17",
           voice: "verse",
         }),
-      },
+      }
     );
 
     const data = await response.json();
@@ -40,6 +40,21 @@ app.get("/token", async (req, res) => {
   }
 });
 
+// Nuevo endpoint para push-to-talk
+app.get("/push-to-talk", (req, res) => {
+  const state = req.query.state;
+  if (state === "1") {
+    console.log("Push-to-talk START received from Python");
+    // Aquí puedes invocar una función para activar el audio, por ejemplo: pushToTalkStart();
+  } else if (state === "0") {
+    console.log("Push-to-talk STOP received from Python");
+    // Aquí puedes invocar una función para desactivar el audio, por ejemplo: pushToTalkStop();
+  } else {
+    console.log("Unknown state received:", state);
+  }
+  res.send("OK");
+});
+
 // Render the React client
 app.use("*", async (req, res, next) => {
   const url = req.originalUrl;
@@ -47,7 +62,7 @@ app.use("*", async (req, res, next) => {
   try {
     const template = await vite.transformIndexHtml(
       url,
-      fs.readFileSync("./client/index.html", "utf-8"),
+      fs.readFileSync("./client/index.html", "utf-8")
     );
     const { render } = await vite.ssrLoadModule("./client/entry-server.jsx");
     const appHtml = await render(url);
