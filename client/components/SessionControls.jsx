@@ -4,13 +4,11 @@ import Button from "./Button";
 
 function SessionStopped({ startSession }) {
   const [isActivating, setIsActivating] = useState(false);
-
   function handleStartSession() {
     if (isActivating) return;
     setIsActivating(true);
     startSession();
   }
-
   return (
     <div className="flex items-center justify-center w-full h-full">
       <Button
@@ -26,12 +24,10 @@ function SessionStopped({ startSession }) {
 
 function SessionActive({ stopSession, sendTextMessage, pushToTalkStart, pushToTalkStop }) {
   const [message, setMessage] = useState("");
-
   function handleSendText() {
     sendTextMessage(message);
     setMessage("");
   }
-
   return (
     <div className="flex items-center justify-center w-full h-full gap-4">
       <input

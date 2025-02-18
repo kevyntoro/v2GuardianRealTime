@@ -1,7 +1,9 @@
 import express from "express";
 import fs from "fs";
+import http from "http";
 import { createServer as createViteServer } from "vite";
 import "dotenv/config";
+import { WebSocketServer } from "ws";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -40,15 +42,28 @@ app.get("/token", async (req, res) => {
   }
 });
 
-// Nuevo endpoint para push-to-talk
+// Create an HTTP server so we can attach a WebSocket server
+const server = http.createServer(app);
+
+// Set up a WebSocket server to broadcast push-to-talk events
+const wss = new WebSocketServer({ server });
+function broadcastPushToTalkEvent(event) {
+  wss.clients.forEach((client) => {
+    if (client.readyState === client.OPEN) {
+      client.send(JSON.stringify({ event }));
+    }
+  });
+}
+
+// Endpoint for push-to-talk from Python
 app.get("/push-to-talk", (req, res) => {
   const state = req.query.state;
   if (state === "1") {
     console.log("Push-to-talk START received from Python");
-    // Aquí puedes invocar una función para activar el audio, por ejemplo: pushToTalkStart();
+    broadcastPushToTalkEvent("pushToTalkStart");
   } else if (state === "0") {
     console.log("Push-to-talk STOP received from Python");
-    // Aquí puedes invocar una función para desactivar el audio, por ejemplo: pushToTalkStop();
+    broadcastPushToTalkEvent("pushToTalkStop");
   } else {
     console.log("Unknown state received:", state);
   }
@@ -58,7 +73,6 @@ app.get("/push-to-talk", (req, res) => {
 // Render the React client
 app.use("*", async (req, res, next) => {
   const url = req.originalUrl;
-
   try {
     const template = await vite.transformIndexHtml(
       url,
@@ -74,6 +88,6 @@ app.use("*", async (req, res, next) => {
   }
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Express server running on *:${port}`);
 });

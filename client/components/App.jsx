@@ -13,34 +13,22 @@ export default function App() {
   const localAudioTrack = useRef(null); // Para manejar la pista local (push-to-talk)
 
   async function startSession() {
-    // Get an ephemeral key from the Fastify server
     const tokenResponse = await fetch("/token");
     const data = await tokenResponse.json();
     const EPHEMERAL_KEY = data.client_secret.value;
-
-    // Create a peer connection
     const pc = new RTCPeerConnection();
-
-    // Set up to play remote audio from the model
     audioElement.current = document.createElement("audio");
     audioElement.current.autoplay = true;
     pc.ontrack = (e) => (audioElement.current.srcObject = e.streams[0]);
-
-    // Add local audio track for microphone input in the browser
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     const track = ms.getTracks()[0];
     track.enabled = false; // No se transmite hasta activar push-to-talk
     localAudioTrack.current = track;
     pc.addTrack(track);
-
-    // Set up data channel for sending and receiving events
     const dc = pc.createDataChannel("oai-events");
     setDataChannel(dc);
-
-    // Start the session using the Session Description Protocol (SDP)
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-
     const baseUrl = "https://api.openai.com/v1/realtime";
     const model = "gpt-4o-realtime-preview-2024-12-17";
     const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
@@ -51,26 +39,16 @@ export default function App() {
         "Content-Type": "application/sdp",
       },
     });
-
-    const answer = {
-      type: "answer",
-      sdp: await sdpResponse.text(),
-    };
+    const answer = { type: "answer", sdp: await sdpResponse.text() };
     await pc.setRemoteDescription(answer);
-
     peerConnection.current = pc;
   }
 
-  // Stop current session, clean up peer connection and data channel
   function stopSession() {
-    if (dataChannel) {
-      dataChannel.close();
-    }
+    if (dataChannel) dataChannel.close();
     if (peerConnection.current) {
       peerConnection.current.getSenders().forEach((sender) => {
-        if (sender.track) {
-          sender.track.stop();
-        }
+        if (sender.track) sender.track.stop();
       });
       peerConnection.current.close();
     }
@@ -79,7 +57,6 @@ export default function App() {
     peerConnection.current = null;
   }
 
-  // Send a message to the model
   function sendClientEvent(message) {
     if (dataChannel) {
       message.event_id = message.event_id || crypto.randomUUID();
@@ -90,22 +67,15 @@ export default function App() {
     }
   }
 
-  // Send a text message to the model
   function sendTextMessage(message) {
     const event = {
       type: "conversation.item.create",
-      item: {
-        type: "message",
-        role: "user",
-        content: [{ type: "input_text", text: message }],
-      },
+      item: { type: "message", role: "user", content: [{ type: "input_text", text: message }] },
     };
-
     sendClientEvent(event);
     sendClientEvent({ type: "response.create" });
   }
 
-  // Funciones de push-to-talk: activan o desactivan la transmisión del audio
   function pushToTalkStart() {
     if (localAudioTrack.current) {
       localAudioTrack.current.enabled = true;
@@ -132,6 +102,32 @@ export default function App() {
       });
     }
   }, [dataChannel]);
+
+  // Conexión al WebSocket para recibir eventos push-to-talk del botón físico
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:3000");
+    ws.onopen = () => {
+      console.log("WebSocket connected for push-to-talk events");
+    };
+    ws.onmessage = (message) => {
+      try {
+        const data = JSON.parse(message.data);
+        if (data.event === "pushToTalkStart") {
+          console.log("Received pushToTalkStart from WebSocket");
+          pushToTalkStart();
+        } else if (data.event === "pushToTalkStop") {
+          console.log("Received pushToTalkStop from WebSocket");
+          pushToTalkStop();
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+    return () => ws.close();
+  }, []);
 
   return (
     <>

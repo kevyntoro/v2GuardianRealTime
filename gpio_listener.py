@@ -3,7 +3,6 @@ from gpiozero import Button
 import time
 import requests
 
-# URL del endpoint del servidor (en este caso, localhost en el puerto 3000)
 SERVER_URL = "http://localhost:3000/push-to-talk"
 
 def log_and_send(state):
@@ -23,11 +22,8 @@ def log_and_send(state):
         except Exception as e:
             print(f"{current_time} - Error sending request: {e}")
 
-# Configura el botón en GPIO16.
-# Dado que tu prueba mínima funcionó con pull_up activado, usamos pull_up=True.
+# Configura el botón en GPIO16. Si tu cableado requiere pull-up (botón conecta a GND al presionar), usa pull_up=True.
 button = Button(16, pull_up=True, bounce_time=0.2)
-
-# Asigna las funciones a los eventos del botón
 button.when_pressed = lambda: log_and_send(True)
 button.when_released = lambda: log_and_send(False)
 
