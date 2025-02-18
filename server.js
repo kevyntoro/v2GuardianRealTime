@@ -4,6 +4,7 @@ import http from "http";
 import { createServer as createViteServer } from "vite";
 import "dotenv/config";
 import { WebSocketServer } from "ws";
+import { instructions } from "./instructions.js"; // Importa las instrucciones
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -30,7 +31,7 @@ app.get("/token", async (req, res) => {
         body: JSON.stringify({
           model: "gpt-4o-realtime-preview-2024-12-17",
           voice: "echo",
-          instructions: "Eres un asistente de turismo y siempre debes recordarselo al que hable contigo.",
+          instructions: instructions,
           
         }),
       }
