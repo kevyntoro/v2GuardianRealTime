@@ -1,39 +1,38 @@
 #!/usr/bin/env python3
-import RPi.GPIO as GPIO
+from gpiozero import Button
 import time
 import requests
 
-# Configurar la numeración BCM y el GPIO16 con pull-down
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
 SERVER_URL = "http://localhost:3000/push-to-talk"
 
-def button_callback(channel):
-    state = GPIO.input(channel)
+def log_and_send(state):
     current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    if state == 1:
+    if state:
         print(f"{current_time} - Button pressed: push-to-talk START")
         try:
-            r = requests.get(SERVER_URL, params={"state": "1"})
-            print(f"{current_time} - Response: {r.text}")
+            response = requests.get(SERVER_URL, params={"state": "1"})
+            print(f"{current_time} - Response: {response.text}")
         except Exception as e:
             print(f"{current_time} - Error sending request: {e}")
     else:
         print(f"{current_time} - Button released: push-to-talk STOP")
         try:
-            r = requests.get(SERVER_URL, params={"state": "0"})
-            print(f"{current_time} - Response: {r.text}")
+            response = requests.get(SERVER_URL, params={"state": "0"})
+            print(f"{current_time} - Response: {response.text}")
         except Exception as e:
             print(f"{current_time} - Error sending request: {e}")
 
-GPIO.add_event_detect(16, GPIO.BOTH, callback=button_callback, bouncetime=200)
+# Configura el botón en GPIO16.
+# Ajusta el parámetro pull_up según tu cableado (en este ejemplo, asumo que el botón cierra a 3.3V, por lo que no uso pull-up).
+button = Button(16, pull_up=False, bounce_time=0.2)
 
+# Asigna las funciones a los eventos del botón
+button.when_pressed = lambda: log_and_send(True)
+button.when_released = lambda: log_and_send(False)
+
+print("Listening on GPIO16. Press Ctrl+C to exit.")
 try:
-    print("Listening on GPIO16. Press Ctrl+C to exit.")
     while True:
         time.sleep(1)
 except KeyboardInterrupt:
     print("Exiting...")
-finally:
-    GPIO.cleanup()
