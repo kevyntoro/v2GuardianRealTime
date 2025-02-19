@@ -3,6 +3,8 @@ import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import ToolPanel from "./ToolPanel";
+import ToolTriage from "/components/Tools/ToolTriage.jsx";
+
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -163,6 +165,12 @@ export default function App() {
             isSessionActive={isSessionActive}
           />
         </section>
+        {/* Importante: incluir ToolTriage para que se ejecute su lógica en segundo plano */}
+        <ToolTriage
+          sendClientEvent={sendClientEvent}
+          events={events}
+          isSessionActive={isSessionActive}
+        />
       </main>
     </>
   );
