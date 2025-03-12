@@ -4,57 +4,8 @@ import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import ToolPanel from "./ToolPanel";
-import ToolAlert from "/components/Tools/ToolAlert.jsx";
-import ToolTriage from "/components/Tools/ToolTriage.jsx";
-
-const combinedSessionUpdate = {
-  type: "session.update",
-  session: {
-    tools: [
-      {
-        type: "function",
-        name: "display_restaurant_info",
-        description: `
-Call this function when a user asks for restaurant information.
-It receives a restaurant name, queries the external endpoint for details,
-and returns a brief summary of the restaurant.
-        `,
-        parameters: {
-          type: "object",
-          strict: true,
-          properties: {
-            restaurantName: {
-              type: "string",
-              description: "Name of the restaurant to get information from",
-            },
-          },
-          required: ["restaurantName"],
-        },
-      },
-      {
-        type: "function",
-        name: "display_alert_info",
-        description: `
-Call this function when the user needs help or is in an emergency related to these fields {accidente vehicular:0, incencio:1, robo:2, emergencia medica:3, persona desaparecida:4} and similar.
-It will call the Guardian alert API with the alert id.
-        `,
-        parameters: {
-          type: "object",
-          strict: true,
-          properties: {
-            alerta_id: {
-              type: "number",
-              description:
-                "ID de la alerta (0: accidente vehicular, 1: incencio, 2: robo, 3: emergencia medica, 4: persona desaparecida)",
-            },
-          },
-          required: ["alerta_id"],
-        },
-      },
-    ],
-    tool_choice: "auto",
-  },
-};
+import ToolTriage from "/components/Tools/ToolTriage.jsx"; // Se importa ToolTriage
+import ToolAlert from "/components/Tools/ToolAlert.jsx"; // Se importa ToolAlert
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -74,7 +25,7 @@ export default function App() {
     pc.ontrack = (e) => (audioElement.current.srcObject = e.streams[0]);
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     const track = ms.getTracks()[0];
-    track.enabled = false;
+    track.enabled = false; // Inicialmente deshabilitado
     localAudioTrack.current = track;
     pc.addTrack(track);
     const dc = pc.createDataChannel("oai-events");
@@ -119,7 +70,7 @@ export default function App() {
     }
   }
 
-  // WebSocket para push-to-talk
+  // Configuración del WebSocket para push-to-talk
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:3000");
     ws.onopen = () => {
@@ -140,7 +91,7 @@ export default function App() {
     return () => ws.close();
   }, []);
 
-  // Configuración del dataChannel: se envía la actualización combinada solo una vez cuando se abre.
+  // Configuración del dataChannel para recibir eventos
   useEffect(() => {
     if (dataChannel) {
       dataChannel.addEventListener("message", (e) => {
@@ -148,7 +99,6 @@ export default function App() {
       });
       dataChannel.addEventListener("open", () => {
         setIsSessionActive(true);
-        sendClientEvent(combinedSessionUpdate);
         setEvents([]);
       });
     }
@@ -185,8 +135,16 @@ export default function App() {
           />
         </section>
         {/* Componentes que actúan en segundo plano */}
-        <ToolAlert sendClientEvent={sendClientEvent} events={events} isSessionActive={isSessionActive} />
-        <ToolTriage sendClientEvent={sendClientEvent} events={events} isSessionActive={isSessionActive} />
+        <ToolTriage
+          sendClientEvent={sendClientEvent}
+          events={events}
+          isSessionActive={isSessionActive}
+        />
+        <ToolAlert
+          sendClientEvent={sendClientEvent}
+          events={events}
+          isSessionActive={isSessionActive}
+        />
       </main>
     </>
   );
