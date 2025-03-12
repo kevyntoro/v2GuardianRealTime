@@ -4,8 +4,8 @@ import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import ToolPanel from "./ToolPanel";
-import ToolAlert from "/components/Tools/ToolAlert.jsx"; // Se importa ToolAlert
-import ToolTriage from "/components/Tools/ToolTriage.jsx"; // Se importa ToolTriage
+import ToolAlert from "/components/Tools/ToolAlert.jsx"; // Importación actualizada
+import ToolTriage from "/components/Tools/ToolTriage.jsx"; // Importación actualizada
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -70,7 +70,6 @@ export default function App() {
     }
   }
 
-  // Configuración del WebSocket para eventos push-to-talk
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:3000");
     ws.onopen = () => {
@@ -91,7 +90,6 @@ export default function App() {
     return () => ws.close();
   }, []);
 
-  // Configuración del dataChannel para recibir eventos
   useEffect(() => {
     if (dataChannel) {
       dataChannel.addEventListener("message", (e) => {
@@ -135,16 +133,8 @@ export default function App() {
           />
         </section>
         {/* Componentes que actúan en segundo plano */}
-        <ToolAlert
-          sendClientEvent={sendClientEvent}
-          events={events}
-          isSessionActive={isSessionActive}
-        />
-        <ToolTriage
-          sendClientEvent={sendClientEvent}
-          events={events}
-          isSessionActive={isSessionActive}
-        />
+        <ToolAlert sendClientEvent={sendClientEvent} events={events} isSessionActive={isSessionActive} />
+        <ToolTriage sendClientEvent={sendClientEvent} events={events} isSessionActive={isSessionActive} />
       </main>
     </>
   );

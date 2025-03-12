@@ -1,5 +1,5 @@
 // ToolAlert.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 const functionDescription = `
 Call this function when the user needs help or is in an emergency related to these fields {accidente vehicular:0, incencio:1, robo:2, emergencia medica:3, persona desaparecida:4} and similar.
@@ -54,7 +54,8 @@ function generateSummary(data) {
 }
 
 export default function ToolAlert({ sendClientEvent, events, isSessionActive }) {
-  const [functionAdded, setFunctionAdded] = useState(false);
+  const [registered, setRegistered] = useState(false);
+  const processedEventsRef = useRef(new Set());
 
   useEffect(() => {
     console.log("ToolAlert mounted");
@@ -62,54 +63,56 @@ export default function ToolAlert({ sendClientEvent, events, isSessionActive }) 
 
   useEffect(() => {
     if (!events || events.length === 0) return;
-    console.log("ToolAlert - Eventos recibidos:", events);
 
-    // Registra la herramienta cuando se detecta un session.created
-    const firstEvent = events[events.length - 1];
-    if (!functionAdded && firstEvent.type === "session.created") {
-      console.log("ToolAlert - Registrando función display_alert_info");
-      sendClientEvent(sessionUpdate);
-      setFunctionAdded(true);
-    }
+    events.forEach((event) => {
+      if (processedEventsRef.current.has(event.event_id)) return;
 
-    // Procesa el evento que invoque display_alert_info
-    const mostRecentEvent = events[0];
-    if (mostRecentEvent.type === "response.done" && mostRecentEvent.response.output) {
-      mostRecentEvent.response.output.forEach((output) => {
-        if (output.type === "function_call" && output.name === "display_alert_info") {
-          console.log("ToolAlert - Ejecutando display_alert_info con argumentos:", output.arguments);
-          let args;
-          try {
-            args = JSON.parse(output.arguments);
-          } catch (error) {
-            console.error("ToolAlert - Error al parsear argumentos:", error);
-            return;
+      if (!registered && event.type === "session.created") {
+        console.log("ToolAlert - Registrando función display_alert_info");
+        sendClientEvent(sessionUpdate);
+        setRegistered(true);
+        processedEventsRef.current.add(event.event_id);
+      }
+
+      if (event.type === "response.done" && event.response && event.response.output) {
+        event.response.output.forEach((output) => {
+          if (output.type === "function_call" && output.name === "display_alert_info") {
+            console.log("ToolAlert - Ejecutando display_alert_info con argumentos:", output.arguments);
+            let args;
+            try {
+              args = JSON.parse(output.arguments);
+            } catch (error) {
+              console.error("ToolAlert - Error al parsear argumentos:", error);
+              return;
+            }
+            const { alerta_id } = args;
+            if (alerta_id === undefined || alerta_id === null) {
+              console.error("ToolAlert - No se proporcionó alerta_id");
+              return;
+            }
+            (async () => {
+              const data = await fetchAlertInfo(alerta_id);
+              const summary = generateSummary(data);
+              console.log("ToolAlert - Resumen generado:", summary);
+              sendClientEvent({
+                type: "response.create",
+                response: {
+                  instructions: summary,
+                },
+              });
+            })();
+            processedEventsRef.current.add(event.event_id);
           }
-          const { alerta_id } = args;
-          if (alerta_id === undefined || alerta_id === null) {
-            console.error("ToolAlert - No se proporcionó alerta_id");
-            return;
-          }
-          (async () => {
-            const data = await fetchAlertInfo(alerta_id);
-            const summary = generateSummary(data);
-            console.log("ToolAlert - Resumen generado:", summary);
-            sendClientEvent({
-              type: "response.create",
-              response: {
-                instructions: summary,
-              },
-            });
-          })();
-        }
-      });
-    }
-  }, [events, functionAdded, sendClientEvent]);
+        });
+      }
+    });
+  }, [events, registered, sendClientEvent]);
 
   useEffect(() => {
     if (!isSessionActive) {
-      setFunctionAdded(false);
-      console.log("ToolAlert - Sesión inactiva, reiniciando registro de función");
+      setRegistered(false);
+      processedEventsRef.current.clear();
+      console.log("ToolAlert - Sesión inactiva, reiniciando registro");
     }
   }, [isSessionActive]);
 
