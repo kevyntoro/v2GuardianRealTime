@@ -1,10 +1,11 @@
+// App.jsx
 import { useEffect, useRef, useState } from "react";
 import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import ToolPanel from "./ToolPanel";
-import ToolTriage from "/components/Tools/ToolTriage.jsx";
-
+import ToolTriage from "/components/Tools/ToolTriage.jsx"; // Se importa ToolTriage
+import ToolAlert from "/components/Tools/ToolAlert.jsx"; // Se importa ToolAlert
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -12,7 +13,7 @@ export default function App() {
   const [dataChannel, setDataChannel] = useState(null);
   const peerConnection = useRef(null);
   const audioElement = useRef(null);
-  const localAudioTrack = useRef(null); // Para manejar la pista local (push-to-talk)
+  const localAudioTrack = useRef(null);
 
   async function startSession() {
     const tokenResponse = await fetch("/token");
@@ -24,7 +25,7 @@ export default function App() {
     pc.ontrack = (e) => (audioElement.current.srcObject = e.streams[0]);
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     const track = ms.getTracks()[0];
-    track.enabled = false; // No se transmite hasta activar push-to-talk
+    track.enabled = false; // Inicialmente deshabilitado
     localAudioTrack.current = track;
     pc.addTrack(track);
     const dc = pc.createDataChannel("oai-events");
@@ -60,8 +61,8 @@ export default function App() {
   }
 
   function sendClientEvent(message) {
-    if (dataChannel) {
-      message.event_id = message.event_id || crypto.randomUUID();
+    message.event_id = message.event_id || crypto.randomUUID();
+    if (dataChannel && dataChannel.readyState === "open") {
       dataChannel.send(JSON.stringify(message));
       setEvents((prev) => [message, ...prev]);
     } else {
@@ -69,30 +70,28 @@ export default function App() {
     }
   }
 
-  function sendTextMessage(message) {
-    const event = {
-      type: "conversation.item.create",
-      item: { type: "message", role: "user", content: [{ type: "input_text", text: message }] },
+  // Configuración del WebSocket para push-to-talk
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:3000");
+    ws.onopen = () => {
+      console.log("WebSocket connected for push-to-talk events");
     };
-    sendClientEvent(event);
-    sendClientEvent({ type: "response.create" });
-  }
+    ws.onmessage = (message) => {
+      try {
+        const data = JSON.parse(message.data);
+        if (data.event === "pushToTalkStart") {
+          if (localAudioTrack.current) localAudioTrack.current.enabled = true;
+        } else if (data.event === "pushToTalkStop") {
+          if (localAudioTrack.current) localAudioTrack.current.enabled = false;
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
+    return () => ws.close();
+  }, []);
 
-  function pushToTalkStart() {
-    if (localAudioTrack.current) {
-      localAudioTrack.current.enabled = true;
-      console.log("Push-to-talk activated");
-    } else {
-      console.log("Local audio track not available");
-    }
-  }
-  function pushToTalkStop() {
-    if (localAudioTrack.current) {
-      localAudioTrack.current.enabled = false;
-      console.log("Push-to-talk deactivated");
-    }
-  }
-
+  // Configuración del dataChannel para recibir eventos
   useEffect(() => {
     if (dataChannel) {
       dataChannel.addEventListener("message", (e) => {
@@ -104,32 +103,6 @@ export default function App() {
       });
     }
   }, [dataChannel]);
-
-  // Conexión al WebSocket para recibir eventos push-to-talk del botón físico
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:3000");
-    ws.onopen = () => {
-      console.log("WebSocket connected for push-to-talk events");
-    };
-    ws.onmessage = (message) => {
-      try {
-        const data = JSON.parse(message.data);
-        if (data.event === "pushToTalkStart") {
-          console.log("Received pushToTalkStart from WebSocket");
-          pushToTalkStart();
-        } else if (data.event === "pushToTalkStop") {
-          console.log("Received pushToTalkStop from WebSocket");
-          pushToTalkStop();
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-      }
-    };
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-    return () => ws.close();
-  }, []);
 
   return (
     <>
@@ -149,24 +122,25 @@ export default function App() {
               startSession={startSession}
               stopSession={stopSession}
               sendClientEvent={sendClientEvent}
-              sendTextMessage={sendTextMessage}
               events={events}
               isSessionActive={isSessionActive}
-              pushToTalkStart={pushToTalkStart}
-              pushToTalkStop={pushToTalkStop}
             />
           </section>
         </section>
         <section className="absolute top-0 w-[380px] right-0 bottom-0 p-4 pt-0 overflow-y-auto">
           <ToolPanel
             sendClientEvent={sendClientEvent}
-            sendTextMessage={sendTextMessage}
             events={events}
             isSessionActive={isSessionActive}
           />
         </section>
-        {/* Importante: incluir ToolTriage para que se ejecute su lógica en segundo plano */}
+        {/* Componentes que actúan en segundo plano */}
         <ToolTriage
+          sendClientEvent={sendClientEvent}
+          events={events}
+          isSessionActive={isSessionActive}
+        />
+        <ToolAlert
           sendClientEvent={sendClientEvent}
           events={events}
           isSessionActive={isSessionActive}
