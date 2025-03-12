@@ -7,7 +7,7 @@ import ToolPanel from "./ToolPanel";
 import ToolAlert from "/components/Tools/ToolAlert.jsx";
 import ToolTriage from "/components/Tools/ToolTriage.jsx";
 
-// Se crea una única actualización de sesión que registra ambas herramientas
+// Registro combinado de herramientas
 const combinedSessionUpdate = {
   type: "session.update",
   session: {
@@ -75,7 +75,7 @@ export default function App() {
     pc.ontrack = (e) => (audioElement.current.srcObject = e.streams[0]);
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     const track = ms.getTracks()[0];
-    track.enabled = false; // Inicialmente deshabilitado (push-to-talk)
+    track.enabled = false;
     localAudioTrack.current = track;
     pc.addTrack(track);
     const dc = pc.createDataChannel("oai-events");
@@ -141,7 +141,7 @@ export default function App() {
     return () => ws.close();
   }, []);
 
-  // Configuración del dataChannel para recibir eventos
+  // Cuando el dataChannel se abre, se registra la sesión combinada
   useEffect(() => {
     if (dataChannel) {
       dataChannel.addEventListener("message", (e) => {
@@ -149,7 +149,6 @@ export default function App() {
       });
       dataChannel.addEventListener("open", () => {
         setIsSessionActive(true);
-        // Enviar actualización de sesión combinada para registrar ambas herramientas
         sendClientEvent(combinedSessionUpdate);
         setEvents([]);
       });
@@ -187,18 +186,9 @@ export default function App() {
           />
         </section>
         {/* Componentes que actúan en segundo plano */}
-        <ToolAlert
-          sendClientEvent={sendClientEvent}
-          events={events}
-          isSessionActive={isSessionActive}
-        />
-        <ToolTriage
-          sendClientEvent={sendClientEvent}
-          events={events}
-          isSessionActive={isSessionActive}
-        />
+        <ToolAlert sendClientEvent={sendClientEvent} events={events} isSessionActive={isSessionActive} />
+        <ToolTriage sendClientEvent={sendClientEvent} events={events} isSessionActive={isSessionActive} />
       </main>
     </>
   );
 }
-
