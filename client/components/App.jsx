@@ -135,16 +135,17 @@ export default function App() {
           />
         </section>
         {/* Componentes que actúan en segundo plano */}
-        <ToolTriage
-          sendClientEvent={sendClientEvent}
-          events={events}
-          isSessionActive={isSessionActive}
-        />
         <ToolAlert
           sendClientEvent={sendClientEvent}
           events={events}
           isSessionActive={isSessionActive}
         />
+        <ToolTriage
+          sendClientEvent={sendClientEvent}
+          events={events}
+          isSessionActive={isSessionActive}
+        />
+
       </main>
     </>
   );
