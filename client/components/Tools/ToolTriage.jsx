@@ -1,36 +1,11 @@
 // ToolTriage.jsx
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
 const functionDescription = `
 Call this function when a user asks for restaurant information.
 It receives a restaurant name, queries the external endpoint for details,
 and returns a brief summary of the restaurant.
 `;
-
-const sessionUpdate = {
-  type: "session.update",
-  session: {
-    tools: [
-      {
-        type: "function",
-        name: "display_restaurant_info",
-        description: functionDescription,
-        parameters: {
-          type: "object",
-          strict: true,
-          properties: {
-            restaurantName: {
-              type: "string",
-              description: "Name of the restaurant to get information from",
-            },
-          },
-          required: ["restaurantName"],
-        },
-      },
-    ],
-    tool_choice: "auto",
-  },
-};
 
 async function fetchRestaurantInfo(restaurantName) {
   try {
@@ -54,37 +29,24 @@ function generateSummary(data) {
 }
 
 export default function ToolTriage({ sendClientEvent, events, isSessionActive }) {
-  const [registered, setRegistered] = useState(false);
-  // Guardamos en un Set los IDs de eventos ya procesados por este tool
-  const processedEventsRef = useRef(new Set());
-
   useEffect(() => {
     console.log("ToolTriage mounted");
   }, []);
 
   useEffect(() => {
     if (!events || events.length === 0) return;
-
+    // Procesa eventos que invoquen "display_restaurant_info"
     events.forEach((event) => {
-      // Si el evento ya fue procesado, lo saltamos.
-      if (processedEventsRef.current.has(event.event_id)) return;
-
-      // Registro de la herramienta al recibir session.created
-      if (!registered && event.type === "session.created") {
-        console.log("ToolTriage - Registrando función display_restaurant_info");
-        sendClientEvent(sessionUpdate);
-        setRegistered(true);
-        processedEventsRef.current.add(event.event_id);
-      }
-
-      // Procesa la llamada a la función cuando se recibe response.done
       if (
         event.type === "response.done" &&
         event.response &&
         event.response.output
       ) {
         event.response.output.forEach((output) => {
-          if (output.type === "function_call" && output.name === "display_restaurant_info") {
+          if (
+            output.type === "function_call" &&
+            output.name === "display_restaurant_info"
+          ) {
             console.log("ToolTriage - Ejecutando display_restaurant_info con argumentos:", output.arguments);
             let args;
             try {
@@ -109,18 +71,15 @@ export default function ToolTriage({ sendClientEvent, events, isSessionActive })
                 },
               });
             })();
-            processedEventsRef.current.add(event.event_id);
           }
         });
       }
     });
-  }, [events, registered, sendClientEvent]);
+  }, [events, sendClientEvent]);
 
   useEffect(() => {
     if (!isSessionActive) {
-      setRegistered(false);
-      processedEventsRef.current.clear();
-      console.log("ToolTriage - Sesión inactiva, reiniciando registro");
+      console.log("ToolTriage - Sesión inactiva, reiniciando procesamiento");
     }
   }, [isSessionActive]);
 
