@@ -7,7 +7,6 @@ import ToolPanel from "./ToolPanel";
 import ToolAlert from "/components/Tools/ToolAlert.jsx";
 import ToolTriage from "/components/Tools/ToolTriage.jsx";
 
-// Registro combinado de herramientas
 const combinedSessionUpdate = {
   type: "session.update",
   session: {
@@ -141,7 +140,7 @@ export default function App() {
     return () => ws.close();
   }, []);
 
-  // Cuando el dataChannel se abre, se registra la sesión combinada
+  // Configuración del dataChannel: se envía la actualización combinada solo una vez cuando se abre.
   useEffect(() => {
     if (dataChannel) {
       dataChannel.addEventListener("message", (e) => {
