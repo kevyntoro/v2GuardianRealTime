@@ -1,4 +1,4 @@
-// ToolRestaurantInfo.jsx
+// ToolTriage.jsx
 import { useEffect, useState } from "react";
 
 const functionDescription = `
@@ -52,49 +52,51 @@ async function fetchRestaurantInfo(restaurantName) {
 
 function generateSummary(data) {
   if (!data) return "No se pudo obtener la información del restaurante.";
-  // En este caso, asumimos que 'data' ya es el resumen a mostrar.
   return data;
 }
 
-export default function ToolRestaurantInfo({ sendClientEvent, events, isSessionActive }) {
+export default function ToolTriage({ sendClientEvent, events, isSessionActive }) {
   const [functionAdded, setFunctionAdded] = useState(false);
+
+  useEffect(() => {
+    console.log("ToolTriage mounted");
+  }, []);
 
   useEffect(() => {
     if (!events || events.length === 0) return;
 
-    console.log("ToolRestaurantInfo - Eventos recibidos:", events);
+    console.log("ToolTriage - Eventos recibidos:", events);
 
-    // Al detectar que se ha iniciado la sesión, se envía la actualización para registrar la función.
+    // Registra la función cuando se detecta el evento "session.created"
     const firstEvent = events[events.length - 1];
     if (!functionAdded && firstEvent.type === "session.created") {
+      console.log("ToolTriage - Registrando función display_restaurant_info");
       sendClientEvent(sessionUpdate);
       setFunctionAdded(true);
-      console.log("ToolRestaurantInfo - Sesión actualizada con la herramienta de información de restaurante.");
     }
 
-    // Procesa el evento más reciente para detectar la llamada a la función.
+    // Procesa el evento que invoque la función "display_restaurant_info"
     const mostRecentEvent = events[0];
     if (mostRecentEvent.type === "response.done" && mostRecentEvent.response.output) {
       mostRecentEvent.response.output.forEach((output) => {
         if (output.type === "function_call" && output.name === "display_restaurant_info") {
-          console.log("ToolRestaurantInfo - Función display_restaurant_info llamada con argumentos:", output.arguments);
+          console.log("ToolTriage - Función display_restaurant_info llamada con argumentos:", output.arguments);
           let args;
           try {
             args = JSON.parse(output.arguments);
           } catch (error) {
-            console.error("Error al parsear los argumentos:", error);
+            console.error("ToolTriage - Error al parsear los argumentos:", error);
             return;
           }
           const { restaurantName } = args;
           if (!restaurantName) {
-            console.error("No se proporcionó el nombre del restaurante.");
+            console.error("ToolTriage - No se proporcionó el nombre del restaurante.");
             return;
           }
-          // Consulta el endpoint y genera el resumen.
           (async () => {
             const data = await fetchRestaurantInfo(restaurantName);
             const summary = generateSummary(data);
-            console.log("ToolRestaurantInfo - Resumen generado:", summary);
+            console.log("ToolTriage - Resumen generado:", summary);
             sendClientEvent({
               type: "response.create",
               response: {
@@ -110,9 +112,9 @@ export default function ToolRestaurantInfo({ sendClientEvent, events, isSessionA
   useEffect(() => {
     if (!isSessionActive) {
       setFunctionAdded(false);
+      console.log("ToolTriage - Sesión inactiva, reiniciando registro de función");
     }
   }, [isSessionActive]);
 
-  // No se renderiza nada en el frontend.
   return null;
 }

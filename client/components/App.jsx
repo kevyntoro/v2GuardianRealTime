@@ -4,8 +4,8 @@ import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import ToolPanel from "./ToolPanel";
-import ToolTriage from "/components/Tools/ToolTriage.jsx"; // Se importa ToolTriage
 import ToolAlert from "/components/Tools/ToolAlert.jsx"; // Se importa ToolAlert
+import ToolTriage from "/components/Tools/ToolTriage.jsx"; // Se importa ToolTriage
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -25,7 +25,7 @@ export default function App() {
     pc.ontrack = (e) => (audioElement.current.srcObject = e.streams[0]);
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     const track = ms.getTracks()[0];
-    track.enabled = false; // Inicialmente deshabilitado
+    track.enabled = false; // Inicialmente deshabilitado (push-to-talk)
     localAudioTrack.current = track;
     pc.addTrack(track);
     const dc = pc.createDataChannel("oai-events");
@@ -70,7 +70,7 @@ export default function App() {
     }
   }
 
-  // Configuración del WebSocket para push-to-talk
+  // Configuración del WebSocket para eventos push-to-talk
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:3000");
     ws.onopen = () => {
@@ -145,7 +145,6 @@ export default function App() {
           events={events}
           isSessionActive={isSessionActive}
         />
-
       </main>
     </>
   );
