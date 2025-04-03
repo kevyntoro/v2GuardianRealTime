@@ -15,6 +15,12 @@ export default function App() {
   const audioElement = useRef(null);
   const localAudioTrack = useRef(null);
 
+  // Agrega estos estados al inicio, junto a los demás useState
+  const [virtualPush, setVirtualPush] = useState(false);
+  const [physicalPush, setPhysicalPush] = useState(false);
+
+
+
   async function startSession() {
     const tokenResponse = await fetch("/token");
     const data = await tokenResponse.json();
@@ -71,6 +77,15 @@ export default function App() {
   }
 
 
+  useEffect(() => {
+    if (localAudioTrack.current) {
+      // Activa la pista si cualquiera de los botones (virtual o físico) está presionado.
+      localAudioTrack.current.enabled = virtualPush || physicalPush;
+      console.log("Push-to-talk state updated:", { virtualPush, physicalPush, enabled: virtualPush || physicalPush });
+    }
+  }, [virtualPush, physicalPush]);
+  
+
   // Dentro de App.jsx, después de definir startSession y antes del return:
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -94,7 +109,7 @@ export default function App() {
         if (data.event === "pushToTalkStart") {
           if (localAudioTrack.current) localAudioTrack.current.enabled = true;
         } else if (data.event === "pushToTalkStop") {
-          if (localAudioTrack.current) localAudioTrack.current.enabled = false;
+          setPhysicalPush(false);
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -136,6 +151,8 @@ export default function App() {
               sendClientEvent={sendClientEvent}
               events={events}
               isSessionActive={isSessionActive}
+              pushToTalkStart={() => setVirtualPush(true)}
+              pushToTalkStop={() => setVirtualPush(false)}
             />
           </section>
         </section>
