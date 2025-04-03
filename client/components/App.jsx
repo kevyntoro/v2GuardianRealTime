@@ -70,6 +70,18 @@ export default function App() {
     }
   }
 
+
+  // Dentro de App.jsx, después de definir startSession y antes del return:
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isSessionActive) {
+        startSession();
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isSessionActive]);
+
+
   // Configuración del WebSocket para push-to-talk
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:3000");
