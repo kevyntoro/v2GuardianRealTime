@@ -107,6 +107,7 @@ export default function App() {
       try {
         const data = JSON.parse(message.data);
         if (data.event === "pushToTalkStart") {
+          setPhysicalPush(true);
           if (localAudioTrack.current) localAudioTrack.current.enabled = true;
         } else if (data.event === "pushToTalkStop") {
           setPhysicalPush(false);
