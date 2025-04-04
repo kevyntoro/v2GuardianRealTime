@@ -64,7 +64,10 @@ export default function App() {
     setIsSessionActive(false);
     setDataChannel(null);
     peerConnection.current = null;
-  }
+    // Resetear los estados de push al detener la sesión:
+    setVirtualPush(false);
+    setPhysicalPush(false);
+    }
 
   function sendClientEvent(message) {
     message.event_id = message.event_id || crypto.randomUUID();
@@ -76,7 +79,17 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    if (isSessionActive && !virtualPush && !physicalPush) {
+      const disconnectTimer = setTimeout(() => {
+        console.log("No push-to-talk activity detected. Automatically disconnecting session.");
+        stopSession();
+      }, 60000); // 10 segundos, ajustable según necesidad
+      return () => clearTimeout(disconnectTimer);
+    }
+  }, [isSessionActive, virtualPush, physicalPush]);
 
+  
   useEffect(() => {
     if (localAudioTrack.current) {
       // Activa la pista si cualquiera de los botones (virtual o físico) está presionado.
